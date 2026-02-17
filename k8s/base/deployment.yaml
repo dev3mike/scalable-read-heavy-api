@@ -1,0 +1,89 @@
+# A Deployment manages a set of identical pods (containers) running your application
+# It ensures the desired number of pods are running and handles updates automatically
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  # Selector tells Kubernetes which pods belong to this deployment
+  # It matches pods based on their labels
+  selector:
+    matchLabels:
+      app: scalable-read-heavy-api
+      component: api
+  # Template defines what each pod should look like
+  template:
+    metadata:
+      # Labels help identify and group pods
+      labels:
+        app: scalable-read-heavy-api
+        component: api
+    spec:
+      # Service account provides identity for the pod
+      serviceAccountName: api-sa
+      # Containers section defines the actual application containers to run
+      containers:
+        - name: api
+          # Docker image to use for this container
+          image: scalable-read-heavy-api:latest
+          # Ports that the container listens on
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          # Environment variables loaded from ConfigMaps and Secrets
+          # ConfigMaps store non-sensitive config, Secrets store sensitive data
+          envFrom:
+            - configMapRef:
+                name: api-config
+            - secretRef:
+                name: api-secrets
+          # Resource limits and requests help Kubernetes schedule pods efficiently
+          # Requests: minimum resources guaranteed to the pod
+          # Limits: maximum resources the pod can use
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          # Readiness probe checks if the pod is ready to receive traffic
+          # Kubernetes won't send traffic until this probe succeeds
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Liveness probe checks if the pod is still alive
+          # If it fails, Kubernetes will restart the pod
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Startup probe gives the container time to start up
+          # It's useful for slow-starting applications
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
+      # Topology spread constraints ensure pods are spread across different nodes
+      # This improves availability - if one node fails, pods on other nodes keep running
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: scalable-read-heavy-api
+              component: api

@@ -1,0 +1,41 @@
+# Production environment overlay configuration
+# This file customizes the base configuration for production use
+# Overlays allow you to modify base configs without changing the original files
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Production namespace name
+namespace: scalable-read-heavy-api-prod
+
+# Prefix added to all resource names (e.g., "prod-api" instead of "api")
+namePrefix: prod-
+
+# Base resources to include, plus production-specific resources
+resources:
+  - ../../base
+  - ../../components/external-secrets
+  - pdb.yaml
+  - network-policy.yaml
+  - postgres-cluster.yaml
+
+# Patches modify existing resources from the base configuration
+# These files override specific settings for production
+patches:
+  - path: patches/deployment-patch.yaml
+  - path: patches/postgres-patch.yaml
+  - path: patches/hpa-patch.yaml
+  - path: patches/external-secret-patch.yaml
+
+# ConfigMap generator creates configuration values for the application
+# These environment variables will be available to pods
+configMapGenerator:
+  - name: api-config
+    behavior: create
+    literals:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=prod-postgres-rw
+      - DB_READ_HOST=prod-postgres-ro
+      - DB_PORT=5432
+      - DB_NAME=scalable_read_heavy_api_prod
+      - LOG_LEVEL=warn

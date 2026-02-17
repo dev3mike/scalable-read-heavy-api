@@ -1,0 +1,38 @@
+# Test environment overlay configuration
+# This file customizes the base configuration for testing/development use
+# Test environment uses minimal resources for cost efficiency
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Test namespace name
+namespace: scalable-read-heavy-api-test
+
+# Prefix added to all resource names (e.g., "test-api" instead of "api")
+namePrefix: test-
+
+# Base resources to include
+resources:
+  - ../../base
+  - ../../components/external-secrets
+
+# Patches modify existing resources from the base configuration
+# These files override specific settings for test environment
+patches:
+  - path: patches/deployment-patch.yaml
+  - path: patches/postgres-patch.yaml
+  - path: patches/hpa-patch.yaml
+  - path: patches/external-secret-patch.yaml
+
+# ConfigMap generator creates configuration values for the application
+# These environment variables will be available to pods
+configMapGenerator:
+  - name: api-config
+    behavior: create
+    literals:
+      - NODE_ENV=test
+      - PORT=3000
+      - DB_HOST=test-postgres
+      - DB_READ_HOST=test-postgres
+      - DB_PORT=5432
+      - DB_NAME=scalable_read_heavy_api_test
+      - LOG_LEVEL=debug

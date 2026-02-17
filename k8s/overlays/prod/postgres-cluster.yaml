@@ -1,0 +1,90 @@
+# CloudNativePG Cluster - advanced PostgreSQL cluster for production
+# This replaces the simple StatefulSet with a high-availability database cluster
+# CloudNativePG manages replication, failover, and backups automatically
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres
+spec:
+  # Total number of database instances
+  # 1 primary (write) + 1 hot standby (auto-failover) + 10 read replicas = 12 total
+  instances: 12
+
+  # PostgreSQL image to use
+  imageName: ghcr.io/cloudnative-pg/postgresql:16-alpine
+
+  # Update strategy - unsupervised means automatic updates without manual approval
+  primaryUpdateStrategy: unsupervised
+
+  # PostgreSQL configuration parameters for performance tuning
+  # These settings optimize the database for read-heavy workloads
+  postgresql:
+    parameters:
+      max_connections: "300"
+      shared_buffers: "1GB"
+      effective_cache_size: "3GB" # amount of memory available for caching data
+      work_mem: "16MB" # memory allocated for each query
+      maintenance_work_mem: "256MB" # memory allocated for maintenance tasks
+      wal_buffers: "16MB" # memory allocated for WAL (write-ahead logging)
+      random_page_cost: "1.1" # cost of a random page read, example: 1.1 means 10% more time to read a random page
+      effective_io_concurrency: "200" # estimated number of concurrent IO operations
+      max_wal_size: "2GB" # maximum size of the WAL
+      min_wal_size: "512MB" # minimum size of the WAL
+      max_worker_processes: "8" # maximum number of worker processes
+      max_parallel_workers_per_gather: "4" # maximum number of parallel workers per gather, example: 4 means 4 parallel workers will be used to gather data
+      max_parallel_workers: "8" # maximum number of parallel workers, example: 8 means 8 parallel workers will be used to run queries
+
+  # Initial database setup when cluster is first created
+  bootstrap:
+    initdb:
+      database: scalable_read_heavy_api_prod
+      owner: app
+      secret:
+        name: prod-api-secrets
+
+  # Storage configuration for database data
+  storage:
+    size: 100Gi
+    storageClass: gp3 # gp3 is a storage class for AWS EBS, it is a general purpose storage class
+
+  # Resource limits for each database instance
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+  # Affinity rules ensure database pods are spread across different nodes
+  # This improves availability - if one node fails, other nodes keep running
+  affinity:
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: required
+
+  # Enable monitoring for the database cluster
+  monitoring:
+    enablePodMonitor: true # this will create a PodMonitor resource for the database cluster that will be used by Prometheus to scrape metrics from the database cluster
+
+  # Backup configuration - automatically backs up to S3
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://scalable-read-heavy-api-prod-backups/
+      s3Credentials:
+        accessKeyId:
+          name: prod-api-secrets
+          key: AWS_ACCESS_KEY_ID
+        secretAccessKey:
+          name: prod-api-secrets
+          key: AWS_SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+    # Keep backups for 30 days
+    retentionPolicy: "30d"
+
+  # CloudNativePG automatically creates these services:
+  #   prod-postgres-rw  -> always points to the primary (for writes)
+  #   prod-postgres-ro  -> round-robins across all 11 replicas (for reads)
+  #   prod-postgres-r   -> round-robins across ALL instances including primary

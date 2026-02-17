@@ -1,0 +1,27 @@
+# NetworkPolicy controls network traffic between pods
+# This acts like a firewall, allowing only specific connections
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-network-policy
+spec:
+  # This policy applies to PostgreSQL pods
+  podSelector:
+    matchLabels:
+      app: scalable-read-heavy-api
+      component: postgres
+  # Policy type - Ingress means incoming traffic rules
+  policyTypes:
+    - Ingress
+  # Ingress rules define who can connect to the database
+  ingress:
+    - from:
+        # Only allow connections from API pods
+        - podSelector:
+            matchLabels:
+              app: scalable-read-heavy-api
+              component: api
+      # Only allow connections on the PostgreSQL port
+      ports:
+        - protocol: TCP
+          port: 5432

@@ -1,0 +1,101 @@
+# A StatefulSet is like a Deployment but for stateful applications like databases
+# It provides stable network identities and persistent storage for each pod
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  # Service name that provides stable network identity for pods
+  serviceName: postgres
+  # Number of database replicas to run
+  replicas: 1
+  # Selector matches pods that belong to this StatefulSet
+  selector:
+    matchLabels:
+      app: scalable-read-heavy-api
+      component: postgres
+  # Template defines what each database pod should look like
+  template:
+    metadata:
+      labels:
+        app: scalable-read-heavy-api
+        component: postgres
+    spec:
+      containers:
+        - name: postgres
+          # PostgreSQL database image
+          image: postgres:16-alpine
+          # Database port
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          # Environment variables for database configuration
+          # These come from ConfigMaps (non-sensitive) and Secrets (sensitive)
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: api-config
+                  key: DB_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: DB_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: DB_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          # Resource limits for the database container
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          # Volume mount connects persistent storage to the container
+          # This ensures data survives pod restarts
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          # Readiness probe checks if database is ready to accept connections
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - $(POSTGRES_USER)
+                - -d
+                - $(POSTGRES_DB)
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          # Liveness probe checks if database is still running
+          # If it fails, Kubernetes will restart the pod
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - $(POSTGRES_USER)
+                - -d
+                - $(POSTGRES_DB)
+            initialDelaySeconds: 30
+            periodSeconds: 30
+  # Volume claim template creates persistent storage for each pod
+  # Each pod gets its own storage volume that persists even if the pod is deleted
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        # ReadWriteOnce means only one pod can mount this volume at a time
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            # Initial storage size for the database
+            storage: 10Gi

@@ -1,0 +1,9 @@
+# Kind configuration file for the scalable-read-heavy-api cluster
+# This file is used to create a Kind cluster locally for development and testing purposes
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: scalable-read-heavy-api
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker

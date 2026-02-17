@@ -1,0 +1,15 @@
+# Staging HPA patch - overrides base autoscaling settings
+# Staging has lower scaling limits than production
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  # Minimum number of pods to always keep running in staging
+  minReplicas: 3
+  # Maximum number of pods that can be created in staging
+  maxReplicas: 8

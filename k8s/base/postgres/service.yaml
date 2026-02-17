@@ -1,0 +1,22 @@
+# Service for the PostgreSQL database
+# Provides a stable network endpoint to connect to the database
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  type: ClusterIP
+  # clusterIP: None creates a "headless" service
+  # This means each pod gets its own DNS entry instead of a single load-balanced IP
+  # This is needed for StatefulSets where each pod needs a stable identity
+  clusterIP: None
+  # Database port configuration
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+      protocol: TCP
+  # Selector matches the database pods
+  selector:
+    app: scalable-read-heavy-api
+    component: postgres

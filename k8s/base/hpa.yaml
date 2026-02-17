@@ -1,0 +1,29 @@
+# HorizontalPodAutoscaler (HPA) automatically scales the number of pods up or down
+# It watches metrics like CPU and memory usage and adjusts replicas accordingly
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+spec:
+  # Which deployment to scale automatically
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  # Metrics to watch for scaling decisions
+  # When these metrics exceed the target, HPA will add more pods
+  metrics:
+    # Scale based on CPU usage - target is 70% average utilization
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    # Scale based on memory usage - target is 80% average utilization
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Local namespace name
+namespace: scalable-read-heavy-api-local
+
+# Prefix added to all resource names (e.g., "local-api" instead of "api")
+namePrefix: local-
+
+resources:
+  - ../../base
+
+patches:
+  - path: patches/deployment-patch.yaml
+  - path: patches/postgres-patch.yaml
+  - path: patches/hpa-patch.yaml
+
+configMapGenerator:
+  - name: api-config
+    behavior: create
+    literals:
+      - NODE_ENV=local
+      - PORT=3000
+      - DB_HOST=local-postgres
+      - DB_READ_HOST=local-postgres
+      - DB_PORT=5432
+      - DB_NAME=scalable_read_heavy_api_local
+      - LOG_LEVEL=debug
+
+secretGenerator:
+  - name: api-secrets
+    behavior: create
+    literals:
+      - DB_USERNAME=app
+      - DB_PASSWORD=app
+      - JWT_SECRET=local-jwt-secret-change-me

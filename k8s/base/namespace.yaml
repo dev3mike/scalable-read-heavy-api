@@ -1,0 +1,7 @@
+# A Namespace creates a virtual cluster inside your Kubernetes cluster
+# This helps organize resources and separate different applications or environments
+apiVersion: v1
+kind: Namespace
+metadata:
+  # The name of the namespace - all resources will be created inside this namespace
+  name: scalable-read-heavy-api

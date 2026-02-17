@@ -1,0 +1,15 @@
+# PodDisruptionBudget (PDB) ensures minimum availability during maintenance
+# Prevents too many pods from being stopped at once during updates or node maintenance
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-pdb
+spec:
+  # Minimum number of pods that must be available at all times
+  # Kubernetes won't allow more pods to be stopped if it would go below this number
+  minAvailable: 3
+  # Which pods this PDB applies to
+  selector:
+    matchLabels:
+      app: scalable-read-heavy-api
+      component: api

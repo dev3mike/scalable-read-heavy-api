@@ -1,0 +1,10 @@
+# Production postgres patch - disables the base StatefulSet
+# In production, we use CloudNativePG Cluster instead of the simple StatefulSet
+# This patch sets replicas to 0 to disable the base StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  # Set to 0 to disable this StatefulSet (replaced by CloudNativePG Cluster)
+  replicas: 0

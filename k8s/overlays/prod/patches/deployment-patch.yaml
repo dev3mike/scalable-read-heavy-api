@@ -1,0 +1,45 @@
+# Production deployment patch - overrides base deployment settings
+# This file modifies the base deployment configuration for production needs
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  # Production runs more replicas for high availability
+  replicas: 5
+  selector:
+    matchLabels:
+      app: scalable-read-heavy-api
+      component: api
+  # Update strategy controls how pods are updated during deployments
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Maximum pods that can be unavailable during update
+      maxUnavailable: 1
+      # Maximum extra pods that can be created during update
+      maxSurge: 2
+  template:
+    spec:
+      # Affinity rules ensure API pods are spread across different nodes
+      # This improves availability and performance
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: component
+                    operator: In
+                    values:
+                      - api
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: api
+          # Production resource limits are higher than base configuration
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi

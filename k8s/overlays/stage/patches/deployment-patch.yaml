@@ -1,0 +1,33 @@
+# Staging deployment patch - overrides base deployment settings
+# Staging uses fewer resources than production
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  # Staging runs fewer replicas than production
+  replicas: 3
+  selector:
+    matchLabels:
+      app: scalable-read-heavy-api
+      component: api
+  # Update strategy for staging
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Maximum pods that can be unavailable during update
+      maxUnavailable: 1
+      # Maximum extra pods that can be created during update
+      maxSurge: 1
+  template:
+    spec:
+      containers:
+        - name: api
+          # Staging resource limits are lower than production
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
